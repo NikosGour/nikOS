@@ -1,0 +1,6 @@
+- qemu
+- nasm assembler
+- gdb debugger
+- segments
+- data segment
+- extra segment
