@@ -1,10 +1,7 @@
-; start of bootloader for BIOS
-org 0x7C00
-; assembler emits 16bit code because CPU always starts in 16bit mode
-bits 16
+org 0x7C00 ;start of bootloader for BIOS
+bits 16 ;assembler emits 16bit code because CPU always starts in 16bit mode
 
-; Helper macro for endline
-%define ENDL 0x0D, 0x0A
+%define ENDL 0x0D, 0x0A ;Helper macro for endline
 
 ; FAT12 headers
 jmp short start
@@ -42,10 +39,8 @@ puts:
     push ax
 
 .loop:
-    ; read char from DS:SI into AL and increment SI
-    lodsb
-    ; if char is \0, string is finished
-    or al, al
+    lodsb ;read char from DS:SI into AL and increment SI
+    or al, al ;if char is \0, string is finished
     jz .done
 
     ; print char in AL to screen using BIOS interrupt 0x10
@@ -71,18 +66,123 @@ main:
     ; initialize stack
     mov ss, ax
     mov sp, 0x7C00
+    
+    ; read something from floppy disk
+    mov [ebr_drive_number], dl ;BIOS should set DL to the drive number of boot device
+    
+    mov ax, 1 ;read second sector (LBA = 1)
+    mov cl, 1 ;read 1 sector
+    mov bx, 0x7E00 ;read into memory at 0x7E00, data should be after bootloader
+    call disk_read
 
     ; print hello world
     mov si, msg_hello
     call puts
 
     ; halts the CPU.
+    cli
     hlt
 
+floppy_error:
+    mov si, msg_read_failed
+    call puts
+    jmp wait_key_and_reboot
+
+wait_key_and_reboot:
+    mov ah, 0
+    int 16h ;wait for keypress
+    jmp 0FFFFh:0 ;jump to beggining of BIOS to reboot the system
+
 .halt:
-    jmp .halt
+    cli ;disable interrupts, this way the CPU can't get out of halted state
+    hlt
+
+; Disk functions
+
+;; LBA -> CHS
+; params: ax = LBA
+; returns: cx[0:5] = sector, cx[6:15] = track/cylinder, dh = head
+lba_to_chs:
+    push ax
+    push dx
+
+    xor dx, dx ;clear dx
+    div word [bdb_sectors_per_track] ;ax = LBA / sectors_per_track
+                                     ;dx = LBA % sectors_per_track
+    inc dx                           ;dx = (LBA % sectors_per_track) + 1
+    mov cx, dx ;cx = sector
+
+    xor dx, dx ;clear dx
+    div word [bdb_heads] ;ax = (LBA / sectors_per_track) / heads = track/cylinder
+                         ;dx = (LBA / sectors_per_track) % heads = head
+    mov dh, dl ;dh = head
+    mov ch, al ;ch = track/cylinder (low 8 bits)
+    shl ah, 6   
+    or cl, ah ;cl = track/cylinder (high 2 bits) + sector (low 6 bits)
+
+    pop ax
+    mov dl, al
+    pop ax
+    ret
+
+;; Read sector from disk
+; params: ax = LBA, cl = number of sectors to read, dl = drive_number, es:bx = buffer to read in
+disk_read:
+    
+    push ax
+    push bx
+    push cx
+    push dx
+    push di
+
+    push cx
+    call lba_to_chs
+    pop ax
+
+    mov ah, 02h ;read disk interrupt
+    mov di, 3 ;retry count
+
+.retry:
+    pusha ;save all registers to stack
+    stc ;set carry flag, some BIOSes don't set it
+    int 13h
+    jnc .done
+    
+    ; read failed, retry
+    popa ;restore all registers from stack
+    call disk_reset
+    
+    dec di
+    test di, di
+    jnz .retry
+
+.fail: 
+    ; max retries reached
+    jmp floppy_error
+
+.done:
+    popa
+
+    pop di
+    pop dx
+    pop cx
+    pop bx
+    pop ax
+    ret
+
+;; Resets disk controller
+; params: dl = drive_number
+disk_reset:  
+    pusha
+    mov ah, 0
+    stc
+    int 13h
+    jc floppy_error
+    popa
+    ret
 
 msg_hello: db "Hello, World!", ENDL, 0
+msg_read_failed: db "Failed to read from disk", ENDL, 0
 
 ; pad the bootloader to 512 bytes, required by BIOS
 ; $ = memory offset of the line, $$ = memory offset of the start of the current section
