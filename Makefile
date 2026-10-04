@@ -11,7 +11,7 @@ $(OUT_DIR)/main_floppy.img: bootloader kernel
 	## create an empty floppy image of 1.44MB (2880 sectors of 512 bytes)
 	dd if=/dev/zero of=$(OUT_DIR)/main_floppy.img bs=512 count=2880
 	## format the floppy image with FAT12 filesystem and label it "nikOS"
-	mkfs.fat -F 12 -n "nikOS" $(OUT_DIR)/main_floppy.img
+	mkfs.fat -F 12 -n "NIKOS" $(OUT_DIR)/main_floppy.img
 	## copy the bootloader to the first sector of the floppy image
 	dd if=$(OUT_DIR)/bootloader.bin of=$(OUT_DIR)/main_floppy.img conv=notrunc
 	mcopy -i $(OUT_DIR)/main_floppy.img $(OUT_DIR)/kernel.bin "::kernel.bin"
