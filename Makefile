@@ -19,7 +19,7 @@ $(OUT_DIR)/main_floppy.img: bootloader kernel
 
 bootloader: $(OUT_DIR)/bootloader.bin
 $(OUT_DIR)/bootloader.bin: always
-	$(ASM) $(SRC_DIR)/bootloader.asm -f bin -o $(OUT_DIR)/bootloader.bin
+	$(ASM) $(SRC_DIR)/temp.asm -f bin -o $(OUT_DIR)/bootloader.bin
 
 bootloader: $(OUT_DIR)/kernel.bin
 $(OUT_DIR)/kernel.bin: always
