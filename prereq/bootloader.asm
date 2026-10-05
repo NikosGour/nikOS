@@ -12,9 +12,9 @@ bdb_bytes_per_sector: dw 512
 bdb_sectors_per_cluster: db 1 
 bdb_reserved_sectors: dw 1
 bdb_fat_count: db 2
-bdb_dir_entries_count: dw 0E0h
+bdb_dir_entries_count: dw 0xE0
 bdb_total_sectors: dw 2880
-bdb_media_descriptor_type: db 0F0h
+bdb_media_descriptor_type: db 0xF0
 bdb_sectors_per_fat: dw 9
 bdb_sectors_per_track: dw 18
 bdb_heads: dw 2 
@@ -24,8 +24,8 @@ bdb_large_sector_count: dd 0
 ; extended boot record
 ebr_drive_number: db 0
 db 0
-ebr_signature: db 29h
-ebr_volume_id: db 12h, 34h, 56h, 78h
+ebr_signature: db 0x29
+ebr_volume_id: db 0x12, 0x34, 0x56, 0x78
 ebr_volume_label: db 'NIKOS      '
 ebr_system_id: db 'FAT12   '
 
@@ -90,8 +90,8 @@ floppy_error:
 
 wait_key_and_reboot:
     mov ah, 0
-    int 16h ;wait for keypress
-    jmp 0FFFFh:0 ;jump to beggining of BIOS to reboot the system
+    int 0x16 ;wait for keypress
+    jmp 0xFFFF:0 ;jump to beggining of BIOS to reboot the system
 
 .halt:
     cli ;disable interrupts, this way the CPU can't get out of halted state
@@ -139,13 +139,13 @@ disk_read:
     call lba_to_chs
     pop ax
 
-    mov ah, 02h ;read disk interrupt
+    mov ah, 0x2 ;read disk interrupt
     mov di, 3 ;retry count
 
 .retry:
     pusha ;save all registers to stack
     stc ;set carry flag, some BIOSes don't set it
-    int 13h
+    int 0x13
     jnc .done
     
     ; read failed, retry
@@ -176,7 +176,7 @@ disk_reset:
     pusha
     mov ah, 0
     stc
-    int 13h
+    int 0x13
     jc floppy_error
     popa
     ret
@@ -187,4 +187,4 @@ msg_read_failed: db "Failed to read from disk", ENDL, 0
 ; pad the bootloader to 512 bytes, required by BIOS
 ; $ = memory offset of the line, $$ = memory offset of the start of the current section
 times 510 - ($ - $$) db 0
-dw 0AA55h
+dw 0xAA55
