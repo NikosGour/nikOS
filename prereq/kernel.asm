@@ -1,5 +1,4 @@
-; start of bootloader for BIOS
-org 0x7C00
+org 0
 ; assembler emits 16bit code because CPU always starts in 16bit mode
 bits 16
 
@@ -8,7 +7,14 @@ bits 16
 
 ; needed to always start at main, skip the defined functions
 start:
-    jmp main
+    ; print hello world
+    mov si, msg_hello
+    call puts
+
+.halt:
+    ; halts the CPU.
+    cli
+    hlt
 
 puts:
     ; save registers to stack, prologue
@@ -34,27 +40,6 @@ puts:
     pop ax
     pop si
     ret
-    
-
-main:
-    ; initialize data and extra segments
-    mov ax, 0
-    mov ds, ax
-    mov es, ax
-
-    ; initialize stack
-    mov ss, ax
-    mov sp, 0x7C00
-
-    ; print hello world
-    mov si, msg_hello
-    call puts
-
-    ; halts the CPU.
-    hlt
-
-.halt:
-    jmp .halt
 
 msg_hello: db "Hello, World!", ENDL, 0
 
